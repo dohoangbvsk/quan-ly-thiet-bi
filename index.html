@@ -10,6 +10,9 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -86,64 +89,111 @@
             color: red;
         }
 
-        /* Định dạng tối ưu khi gọi lệnh in của trình duyệt */
-        @media print {
-            body {
-                background: white;
-                padding: 0;
-                margin: 0;
-            }
-            .no-print, #loginPage, .card.no-print, p, input, select, button {
-                display: none !important;
-            }
-            #mainPage, #pdfArea {
-                display: block !important;
-                width: 100% !important;
-                box-shadow: none !important;
-                padding: 0 !important;
-                margin: 0 !important;
-            }
-            table {
-                width: 100% !important;
-            }
-            th, td {
-                font-size: 11px !important;
-                padding: 5px !important;
-            }
-        }
+       @media print {
+    @page { size: landscape; } /* Chuyển sang khổ ngang */
+    body {
+        background: white;
+        padding: 0;
+        margin: 0;
+    }
+    .no-print, #loginPage, .card.no-print, p, input, select, button {
+        display: none !important;
+    }
+    #mainPage, #pdfArea {
+        display: block !important;
+        width: 100% !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    table {
+        width: 100% !important;
+        table-layout: auto !important; /* Để bảng tự co giãn theo khổ ngang */
+    }
+    th, td {
+        font-size: 10px !important;
+        padding: 4px !important;
+    }
+}
         
-        .col-stt { width: 5%; }
-        .col-matb { width: 9%; }
-        .col-seri { width: 10%; }
-        .col-ten { width: 18%; }
-        .col-loai { width: 9%; }
-        .col-khoa { width: 17%; }
-        .col-nguoisd { width: 10%; }
-        .col-sl { width: 4%; }
-        .col-tinhtrang { width: 9%; }
-        .col-ngaysd { width: 10%; white-space: nowrap; }
-        .col-qr { width: 12%; }
+        .col-stt { width: 4%; }
+        .col-matb { width: 8%; }
+        .col-seri { width: 9%; }
+        .col-ten { width: 16%; }
+        .col-loai { width: 8%; }
+        .col-khoa { width: 14%; }
+        .col-nguoisd { width: 9%; }
+        .col-sl { width: 3%; }
+        .col-tinhtrang { width: 8%; }
+        .col-ngaysd { width: 8%; white-space: nowrap; }
+        .col-ngaykt { width: 8%; white-space: nowrap; }
+        .col-qr { width: 8%; }
+		/* Thêm đoạn này vào thẻ <style> để cố định khung */
+.page-container {
+    max-width: 1200px; /* Độ rộng trang, xóa dòng này nếu muốn full 100% */
+    margin: 0 auto;    /* Căn giữa */
+    padding: 20px;
+}
+
+/* Ép các ô input và bảng có cùng độ rộng */
+.input {
+    width: 100%;
+    box-sizing: border-box;
+    height: 42px;
+}
+
+.form-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-item label {
+    min-height: 22px;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: #334155;
+}
+
+.form-item input,
+.form-item select {
+    width: 100%;
+    height: 42px;
+    box-sizing: border-box;
+}
+
+table {
+    width: 100% !important;
+    table-layout: fixed;
+}
     </style>
 </head>
 
 <body>
 
-    <div id="loginPage" style="height:100vh; display:flex; justify-content:center; align-items:center;">
-        <div class="card" style="width:400px;">
-            <h1 style="font-size:30px; font-weight:bold; text-align:center; color:#2563eb; margin-bottom:20px;">
-                ĐĂNG NHẬP HỆ THỐNG
-            </h1>
+   <div id="loginPage" style="height:100vh; display:flex; justify-content:center; align-items:center;">
+    <div class="card" style="width:400px;">
+        <div id="formLogin">
+            <h1 style="font-size:30px; font-weight:bold; text-align:center; color:#2563eb; margin-bottom:20px;">ĐĂNG NHẬP</h1>
             <label>Tài khoản</label>
             <input id="username" class="input" value="admin">
-            <br><br>
             <label>Mật khẩu</label>
             <input type="password" id="password" class="input" value="123456">
             <br><br>
-            <button onclick="login()" class="btn" style="width:100%; background:#2563eb;">
-                Đăng nhập
-            </button>
+            <button onclick="login()" class="btn" style="width:100%; background:#2563eb;">Đăng nhập</button>
+            <p style="text-align:center; margin-top:10px; cursor:pointer; color:#64748b;" onclick="togglePassForm()">Đổi mật khẩu?</p>
+        </div>
+
+        <div id="formChangePass" style="display:none;">
+            <h1 style="font-size:24px; font-weight:bold; text-align:center; color:#dc2626; margin-bottom:20px;">ĐỔI MẬT KHẨU</h1>
+            <input id="oldPass" type="password" class="input" placeholder="Mật khẩu cũ">
+            <input id="newPass" type="password" class="input" placeholder="Mật khẩu mới">
+            <br><br>
+            <button onclick="changePassword()" class="btn" style="width:100%; background:#dc2626;">Xác nhận đổi</button>
+            <p style="text-align:center; margin-top:10px; cursor:pointer;" onclick="togglePassForm()">Quay lại</p>
         </div>
     </div>
+</div>
+
 
     <div id="mainPage" style="display:none;">
         <div style="max-width:1900px; margin:auto; padding:20px;">
@@ -152,10 +202,13 @@
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                     <div>
                         <h1 style="font-size:35px; font-weight:bold;">
-                            HỆ THỐNG QUẢN LÝ TRANG THIẾT BỊ TIN HỌC
+                            HỆ THỐNG QUẢN LÝ TRANG THIẾT BỊ
                         </h1>
                         <p style="margin-top:10px; font-size:20px;">
                             BỆNH VIỆN SUỐI KHOÁNG MỸ LÂM TỈNH TUYÊN QUANG
+                        </p>
+						<p style="margin-top:10px; font-size:20px;">
+                            Bản chạy thử....
                         </p>
                     </div>
                     <button onclick="logout()" class="btn" style="background:red;">
@@ -165,83 +218,117 @@
             </div>
 
             <div class="card no-print" style="margin-bottom:20px;">
-                <h2 style="font-size:28px; font-weight:bold; margin-bottom:20px; color:#2563eb;">
-                    THÔNG TIN THIẾT BỊ
-                </h2>
-                <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:15px;">
-                    <div>
-                        <label>Mã thiết bị <span class="required">*</span></label>
-                        <input id="maTB" class="input">
-                    </div>
-                    <div>
-                        <label>Số seri <span class="required">*</span></label>
-                        <input id="seriTB" class="input">
-                    </div>
-                    <div>
-                        <label>Tên thiết bị <span class="required">*</span></label>
-                        <input id="tenTB" class="input">
-                    </div>
-                    <div>
-                        <label>Loại thiết bị</label>
-                        <select id="loaiTB" class="input">
-                            <option>Máy tính</option>
-                            <option>Máy in</option>
-                            <option>Switch</option>
-                            <option>Router</option>
-                            <option>Camera</option>
-                            <option>Máy chủ</option>
-                            <option>UPS</option>
-                            <option>Wifi</option>
-                            <option>Khác</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>Khoa / Phòng</label>
-                        <select id="khoaPhong" class="input">
-                            <option>Phòng Tổ chức - HC - Tài chính</option>
-                            <option>Phòng Kế hoạch - Điều dưỡng</option>
-                            <option>Phòng Kế toán</option>
-                            <option>Khoa Y học cổ truyền</option>
-                            <option>Khoa Da liễu</option>
-                            <option>Khoa VLTL - PHCN</option>
-                            <option>Khoa HSCC</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>Người sử dụng</label>
-                        <input id="nguoiSuDung" class="input">
-                    </div>
-                    <div>
-                        <label>Số lượng</label>
-                        <input type="number" id="soLuong" value="1" class="input">
-                    </div>
-                    <div>
-                        <label>Tình trạng</label>
-                        <select id="tinhTrang" class="input">
-                            <option>Đang sử dụng</option>
-                            <option>Hỏng</option>
-                            <option>Bảo trì</option>
-                            <option>Thanh lý</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>Ngày sử dụng</label>
-                        <input type="date" id="ngaySuDung" class="input">
-                    </div>
-                    <div>
-                        <label>Ngày kết thúc</label>
-                        <input type="date" id="ngayKetThuc" class="input">
-                    </div>
-                    <div>
-                        <label>Ngày nhập</label>
-                        <input type="date" id="ngayNhap" class="input">
-                    </div>
-                </div>
+    <h2 style="font-size:28px; font-weight:bold; margin-bottom:20px; color:#2563eb;">THÔNG TIN THIẾT BỊ</h2>
+    
+    <div style="
+    display:grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap:20px;
+    align-items:start;
+">
+        <div class="form-item"><label>Mã thiết bị <span class="required">*</span></label><input id="maTB" class="input"></div>
+        <div class="form-item"><label>Số seri <span class="required">*</span></label><input id="seriTB" class="input"></div>
+       <div class="form-item"><label>Tên thiết bị <span class="required">*</span></label><input id="tenTB" class="input"></div>
+        
+        <div class="form-item"><label>Loại thiết bị</label>
+            <input list="loaiTB-list" id="loaiTB" class="input" placeholder="Chọn hoặc nhập...">
+            <datalist id="loaiTB-list"><option value="Thiết bị tin học"><option value="Thiết bị Y tế"><option value="Thiết bị chuyên dùng"><option value="Thiết bị văn phòng"><option value="Máy móc thiết bị dùng chung"><option value="Bàn, ghế"></datalist>
+        </div>
 
-                <div style="margin-top:15px;">
-                    <label>Ghi chú</label>
-                    <input id="ghiChu" class="input">
-                </div>
+        <div class="form-item"><label>Phân loại</label>
+            <select id="phanLoai" class="input">
+                <option value="Tài sản">Tài sản</option>
+                <option value="Công cụ, dụng cụ">Công cụ, dụng cụ</option>
+            </select>
+        </div>
+
+        <div class="form-item"><label>Loại tài sản</label>
+            <select id="loaiTaiSan" class="input">
+                <option value="TSCĐ hữu hình">TSCĐ hữu hình</option>
+                <option value="TSCĐ vô hình">TSCĐ vô hình</option>
+                <option value="CCDC">CCDC</option>
+            </select>
+        </div>
+
+       <div class="form-item"><label>Số lượng</label><input type="number" id="soLuong" value="1" class="input" oninput="calculateTotal()"></div>
+        <div class="form-item"><label>Đơn giá</label><input type="text" id="donGia" value="0" class="input" oninput="formatCurrency(this); calculateTotal();"></div>
+        <div class="form-item"><label>Thành tiền</label><input type="text" id="thanhTien" class="input" readonly style="background:#e2e8f0;"></div>
+       <div class="form-item"><label>Ngày nhập</label><input type="date" id="ngayNhap" class="input"></div>
+        <div class="form-item"><label>Ngày sử dụng</label><input type="date" id="ngaySuDung" class="input"></div>
+        <div class="form-item"><label>Ngày kết thúc</label><input type="date" id="ngayKetThuc" class="input"></div>
+    </div>
+    
+    <div style="margin-top:15px;"><label>Khoa/Phòng sử dụng trang thiết bị</label>
+    <input list="listKhoa" id="khoaPhong" class="input" placeholder="Chọn hoặc nhập tên khoa/phòng...">
+    <datalist id="listKhoa">
+        <option value="Phòng Tổ chức - Hành chính - Tài chính">
+        <option value="Phòng Kế hoạch - Điều dưỡng - Tổng hợp">
+        <option value="Phòng Kế toán">
+        <option value="Khoa Y học cổ truyền">
+        <option value="Khoa Da liễu">
+        <option value="Khoa VLTL - PHCN">
+        <option value="Khoa HSCC">
+    </datalist></div>
+    <div style="margin-top:15px;"><label>Ghi chú</label><input id="ghiChu" class="input"></div>
+    
+    </div>
+
+<script>
+    // Hàm tính toán tự động thành tiền
+    function calculateTotal() {
+        const sl = parseFloat(document.getElementById("soLuong").value) || 0;
+        const dg = parseFloat(document.getElementById("donGia").value) || 0;
+        document.getElementById("thanhTien").value = sl * dg;
+    }
+    
+    // Tự động điền ngày hôm nay cho trường Ngày nhập
+    document.getElementById("ngayNhap").valueAsDate = new Date();
+	// =======================
+// FORMAT TIỀN
+function formatCurrency(input) {
+
+    // lấy số
+    let value =
+        input.value.replace(/\D/g,'');
+
+    if (!value) {
+
+        input.value = '';
+        return;
+    }
+
+    // format dấu chấm
+    input.value =
+        Number(value).toLocaleString('vi-VN');
+}
+
+// lấy số thật
+function getNumber(value) {
+
+    return Number(
+        value.replace(/\./g,'')
+    ) || 0;
+}
+
+// tính thành tiền
+function calculateTotal() {
+
+    let sl =
+        Number(
+            document.getElementById("soLuong").value
+        ) || 0;
+
+    let dg =
+        getNumber(
+            document.getElementById("donGia").value
+        );
+
+    let total = sl * dg;
+
+    document.getElementById("thanhTien").value =
+        total.toLocaleString('vi-VN');
+}
+</script>
 
                 <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:20px;">
                     <button id="btnSave" onclick="addDevice()" class="btn" style="background:#2563eb;">
@@ -266,6 +353,9 @@
                     <button onclick="printAllQR()" class="btn" style="background:orange;">
                         In tất cả mã QR
                     </button>
+					<button onclick="openQRScanner()" class="btn" style="background:#0ea5e9;">
+						Quét mã QR
+					</button>
                     <button onclick="backupData()" class="btn" style="background:purple;">
                         Backup JSON
                     </button>
@@ -287,9 +377,9 @@
                 <input id="search" class="input" placeholder="Tìm kiếm nhanh (gõ mã, tên, số seri, khoa phòng, ngày tháng hoặc tình trạng để lọc...)" onkeyup="renderTable()">
             </div>
 
-            <div class="card" id="pdfArea" style="background: white; padding: 25px;">
+            <div class="card no-print" id="pdfArea" style="background: white; padding: 25px;">
                 <h2 style="font-size: 26px; font-weight: bold; margin-bottom: 25px; color: #2563eb; text-align: center;">
-                    DANH SÁCH THIẾT BỊ TIN HỌC
+                    DANH SÁCH TRANG THIẾT BỊ
                 </h2>
                 <div style="overflow:auto;">
                     <table>
@@ -305,15 +395,16 @@
                                 <th class="col-sl">SL</th>
                                 <th class="col-tinhtrang">Tình trạng</th>
                                 <th class="col-ngaysd">Ngày SD</th>
+                                <th class="col-ngaykt">Ngày KT</th>
                                 <th class="col-qr">Mã QR</th>
-                                <th class="no-print" style="width: 120px;">Sửa chữa</th>
-                                <th class="no-print" style="width: 70px;">Lịch sử</th>
-                                <th class="no-print" style="width: 120px;">Thao tác</th>
+                                <th class="no-print" style="width: 100px;">Sửa chữa</th>
+                                <th class="no-print" style="width: 60px;">Lịch sử</th>
+                                <th class="no-print" style="width: 100px;">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody id="tableBody">
                             <tr>
-                                <td colspan="14">Chưa có dữ liệu</td>
+                                <td colspan="15">Đang tải dữ liệu đám mây...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -413,29 +504,106 @@
         </div>
     </div>
 
+    <div id="viewModal" class="modal">
+        <div class="card" style="max-width:600px; margin:auto; background:white;">
+            <h2 style="font-size:24px; font-weight:bold; color:#7c3aed; margin-bottom:15px;">CHI TIẾT THIẾT BỊ & THAO TÁC</h2>
+            <div id="viewModalContent" style="font-size:14px; line-height:1.6; text-align:left;"></div>
+            <div style="margin-top:20px; text-align:right;">
+                <button onclick="document.getElementById('viewModal').style.display='none'" class="btn" style="background:#64748b;">Đóng</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        let devices = JSON.parse(localStorage.getItem("devices")) || [];
-        let editIndex = -1;
+	
+        // --- 1. CẤU HÌNH FIREBASE REALTIME DATABASE ---
+        const firebaseConfig = {
+            databaseURL: "https://qlttb.benhviensuoikhoang.com/"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const dbRef = firebase.database().ref("devices");
+
+        let devices = [];
+        let editIndex = -1; 
+		
+		// Tự động lấy ngày hiện tại
+document.addEventListener("DOMContentLoaded", function () {
+
+    const today =
+        new Date().toISOString().split('T')[0];
+
+    document.getElementById("ngayNhap").value =
+        today;
+
+});
+		// ===== TỰ ĐỘNG KIỂM TRA ĐĂNG NHẬP =====
+window.onload = function () {
+
+    const isLoggedIn = localStorage.getItem("isLoggedIn");
+
+    if (isLoggedIn === "true") {
+
+        document.getElementById("loginPage").style.display = "none";
+        document.getElementById("mainPage").style.display = "block";
+
+    } else {
+
+        document.getElementById("loginPage").style.display = "flex";
+        document.getElementById("mainPage").style.display = "none";
+    }
+};
+
+        // Định dạng ngày tháng chuẩn hiển thị từ YYYY-MM-DD sang DD/MM/YYYY
+        function formatDate(dateStr) {
+            if (!dateStr) return "";
+            const parts = dateStr.split("-");
+            if (parts.length === 3) {
+                return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            }
+            return dateStr;
+        }
+
+        // --- 2. ĐỒNG BỘ DỮ LIỆU THỜI GIAN THỰC (REALTIME) ---
+        dbRef.on("value", (snapshot) => {
+            const data = snapshot.val();
+            devices = data ? data : [];
+            renderTable();
+        });
 
         function saveData() {
-            localStorage.setItem("devices", JSON.stringify(devices));
+            dbRef.set(devices);
         }
 
-        function login() {
-            const user = document.getElementById("username").value;
-            const pass = document.getElementById("password").value;
-            if (user === "admin" && pass === "123456") {
-                document.getElementById("loginPage").style.display = "none";
-                document.getElementById("mainPage").style.display = "block";
-                renderTable();
-            } else {
-                alert("Sai tài khoản hoặc mật khẩu");
-            }
-        }
+       function login() {
+
+    const user = document.getElementById("username").value.trim();
+    const pass = document.getElementById("password").value.trim();
+
+    if (user === "admin" && pass === "123456") {
+
+        // Lưu trạng thái đăng nhập
+        localStorage.setItem("isLoggedIn", "true");
+
+        document.getElementById("loginPage").style.display = "none";
+        document.getElementById("mainPage").style.display = "block";
+
+    } else {
+
+        alert("Sai tài khoản hoặc mật khẩu");
+
+    }
+}
 
         function logout() {
-            location.reload();
-        }
+
+    if (confirm("Bạn có chắc chắn muốn đăng xuất?")) {
+
+        localStorage.removeItem("isLoggedIn");
+
+        document.getElementById("mainPage").style.display = "none";
+        document.getElementById("loginPage").style.display = "flex";
+    }
+}
 
         function addDevice() {
             const device = {
@@ -443,6 +611,21 @@
                 seriTB: document.getElementById("seriTB").value.trim(),
                 tenTB: document.getElementById("tenTB").value.trim(),
                 loaiTB: document.getElementById("loaiTB").value,
+				phanLoai:
+document.getElementById("phanLoai").value,
+
+loaiTaiSan:
+document.getElementById("loaiTaiSan").value,
+
+donGia:
+getNumber(
+document.getElementById("donGia").value
+),
+
+thanhTien:
+getNumber(
+document.getElementById("thanhTien").value
+),
                 khoaPhong: document.getElementById("khoaPhong").value,
                 nguoiSuDung: document.getElementById("nguoiSuDung").value.trim(),
                 soLuong: document.getElementById("soLuong").value,
@@ -460,17 +643,19 @@
                 return;
             }
 
+            const logTime = new Date().toLocaleString("vi-VN");
             if (editIndex >= 0) {
+                device.actionHistory.push(`[${logTime}] Cập nhật thông tin thiết bị.`);
                 devices[editIndex] = device;
                 alert("Đã cập nhật thông tin thiết bị thành công!");
                 editIndex = -1;
                 document.getElementById("btnSave").innerText = "Thêm thiết bị";
             } else {
+                device.actionHistory.push(`[${logTime}] Khởi tạo thiết bị mới trên hệ thống.`);
                 devices.push(device);
                 alert("Đã thêm mới thiết bị thành công!");
             }
             saveData();
-            renderTable();
             clearForm();
         }
 
@@ -484,6 +669,18 @@
             document.getElementById("ngaySuDung").value = "";
             document.getElementById("ngayKetThuc").value = "";
             document.getElementById("ngayNhap").value = "";
+			document.getElementById("donGia").value = 0;
+
+document.getElementById("thanhTien").value = "";
+
+document.getElementById("phanLoai").value = "Tài sản";
+
+document.getElementById("loaiTaiSan").value =
+"TS cố định hữu hình";
+
+// trả ngày nhập về ngày hiện tại
+document.getElementById("ngayNhap").value =
+new Date().toISOString().split('T')[0];
         }
 
         function cancelAction() {
@@ -502,22 +699,27 @@
             const search = document.getElementById("search").value.toLowerCase().trim();
             tbody.innerHTML = "";
 
+            if (devices.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="15">Chưa có dữ liệu trên đám mây. Hãy thêm thiết bị mới hoặc phục hồi dữ liệu!</td></tr>`;
+                return;
+            }
+
             const filtered = devices.filter(d => {
                 if (!search) return true;
                 const searchText = [
                     d.maTB, d.seriTB, d.tenTB, d.loaiTB, d.khoaPhong,
-                    d.nguoiSuDung, d.soLuong, d.tinhTrang, d.ngaySuDung, d.ghiChu
+                    d.nguoiSuDung, d.soLuong, d.tinhTrang, formatDate(d.ngaySuDung), formatDate(d.ngayKetThuc), d.ghiChu
                 ].map(val => (val ? val.toString().toLowerCase() : "")).join(" | ");
                 return searchText.includes(search);
             });
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="14">Không tìm thấy dữ liệu phù hợp</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="15">Không tìm thấy dữ liệu phù hợp</td></tr>`;
                 return;
             }
 
             filtered.forEach((d, index) => {
-                const qrData = `Mã thiết bị: ${d.maTB}\nTên thiết bị: ${d.tenTB}\nSố seri: ${d.seriTB}\nBộ phận sử dụng: ${d.khoaPhong}\nSố lượng: ${d.soLuong}\nTình trạng: ${d.tinhTrang}\nNgày sử dụng: ${d.ngaySuDung}`;
+                const qrData = `Mã thiết bị: ${d.maTB}\nTên thiết bị: ${d.tenTB}\nSố seri: ${d.seriTB}\nBộ phận sử dụng: ${d.khoaPhong}\nSố lượng: ${d.soLuong}\nTình trạng: ${d.tinhTrang}\nNgày sử dụng: ${formatDate(d.ngaySuDung)}\nNgày kết thúc: ${formatDate(d.ngayKetThuc)}`;
                 const qr = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" + encodeURIComponent(qrData);
 
                 tbody.innerHTML += `
@@ -531,7 +733,8 @@
                         <td>${d.nguoiSuDung}</td>
                         <td>${d.soLuong}</td>
                         <td>${d.tinhTrang}</td>
-                        <td style="white-space: nowrap;">${d.ngaySuDung}</td>
+                        <td>${formatDate(d.ngaySuDung)}</td>
+                        <td class="font-semibold text-red-600">${formatDate(d.ngayKetThuc)}</td>
                         <td>
                             <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
                                 <img src="${qr}" style="display:block; width:45px; height:45px;">
@@ -568,10 +771,10 @@
             document.getElementById("nguoiSuDung").value = d.nguoiSuDung;
             document.getElementById("soLuong").value = d.soLuong;
             document.getElementById("tinhTrang").value = d.tinhTrang;
-            document.getElementById("ngaySuDung").value = d.ngaySuDung;
-            document.getElementById("ngayKetThuc").value = d.ngayKetThuc;
-            document.getElementById("ngayNhap").value = d.ngayNhap;
-            document.getElementById("ghiChu").value = d.ghiChu;
+            document.getElementById("ngaySuDung").value = d.ngaySuDung || "";
+            document.getElementById("ngayKetThuc").value = d.ngayKetThuc || "";
+            document.getElementById("ngayNhap").value = d.ngayNhap || "";
+            document.getElementById("ghiChu").value = d.ghiChu || "";
 
             editIndex = index;
             document.getElementById("btnSave").innerText = "Cập nhật thiết bị";
@@ -579,13 +782,13 @@
         }
 
         function deleteDevice(index) {
-            if (confirm("Bạn có chắc chắn muốn xóa thiết bị này khỏi hệ thống?")) {
+            if (confirm("Bạn có chắc chắn muốn xóa thiết bị này khỏi hệ thống trên ĐÁM MÂY?")) {
                 devices.splice(index, 1);
                 saveData();
-                renderTable();
             }
         }
 
+        // --- 3. QUẢN LÝ SỬA CHỮA ---
         function addRepair(index) {
             document.getElementById("repairModal").style.display = "block";
             document.getElementById("repairDeviceIndex").value = index;
@@ -632,10 +835,9 @@
             }
 
             saveData();
-            renderTable();
             renderRepairTable(deviceIndex);
             clearRepairForm();
-            alert("Đã lưu nhật ký sửa chữa");
+            alert("Đã lưu nhật ký sửa chữa lên đám mây");
         }
 
         function renderRepairTable(deviceIndex) {
@@ -652,7 +854,7 @@
                 tbody.innerHTML += `
                     <tr>
                         <td>${index + 1}</td>
-                        <td>${r.date}</td>
+                        <td>${formatDate(r.date)}</td>
                         <td>${r.content}</td>
                         <td>${r.quantity}</td>
                         <td>${r.status}</td>
@@ -683,29 +885,36 @@
         }
 
         function deleteRepair(deviceIndex, index) {
-            if (confirm("Xóa lịch sử sửa chữa này?")) {
+            if (confirm("Xóa lịch sử sửa chữa này khỏi đám mây?")) {
                 devices[deviceIndex].repairHistory.splice(index, 1);
                 saveData();
                 renderRepairTable(deviceIndex);
-                renderTable();
             }
         }
 
-        // CẢI TIẾN 1: Xuất Excel đầy đủ tất cả các trường dữ liệu tương ứng bảng PDF
+        function viewAction(index) {
+            const d = devices[index];
+            const logs = d.actionHistory || ["Chưa có lịch sử hoạt động."];
+            let html = `<b>Mã thiết bị:</b> ${d.maTB}<br><b>Tên thiết bị:</b> ${d.tenTB}<br><hr class='my-2'><b>Nhật ký hoạt động:</b><br><ul class='list-disc pl-4'>`;
+            logs.forEach(l => { html += `<li>${l}</li>`; });
+            html += "</ul>";
+            document.getElementById("viewModalContent").innerHTML = html;
+            document.getElementById("viewModal").style.display = "block";
+        }
+
+        // --- 4. CÁC HÀM XỬ LÝ EXCEL ---
         function exportExcel() {
             if (devices.length === 0) {
                 alert("Danh sách trống, không có dữ liệu để xuất Excel!");
                 return;
             }
 
-            // Tạo tiêu đề cột tương đương với cấu trúc bảng hiển thị
             const headers = [[
                 "STT", "Mã thiết bị", "Số seri", "Tên thiết bị", "Loại thiết bị", 
                 "Khoa / Phòng", "Người sử dụng", "Số lượng", "Tình trạng", 
                 "Ngày sử dụng", "Ngày kết thúc", "Ngày nhập", "Ghi chú"
             ]];
 
-            // Đưa toàn bộ các dòng dữ liệu vào mảng
             const dataRows = devices.map((d, index) => [
                 index + 1,
                 d.maTB || "",
@@ -716,215 +925,127 @@
                 d.nguoiSuDung || "",
                 d.soLuong || 1,
                 d.tinhTrang || "",
-                d.ngaySuDung || "",
-                d.ngayKetThuc || "",
-                d.ngayNhap || "",
+                formatDate(d.ngaySuDung),
+                formatDate(d.ngayKetThuc),
+                formatDate(d.ngayNhap),
                 d.ghiChu || ""
             ]);
 
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.aoa_to_sheet(headers.concat(dataRows));
-            
-            // Tự động tinh chỉnh chiều rộng của các cột trong Excel cho đẹp mắt
-            ws['!cols'] = [
-                {wch: 6}, {wch: 15}, {wch: 15}, {wch: 30}, {wch: 15}, 
-                {wch: 30}, {wch: 15}, {wch: 8}, {wch: 15}, 
-                {wch: 15}, {wch: 15}, {wch: 15}, {wch: 25}
-            ];
-
-            XLSX.utils.book_append_sheet(wb, ws, "DanhSachThietBi");
-            XLSX.writeFile(wb, "Danh_sach_thiet_bi_tin_hoc.xlsx");
-        }
-
-        function backupData() {
-            const data = JSON.stringify(devices, null, 2);
-            const blob = new Blob([data], { type: 'application/json' });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = "backup_thietbi.json";
-            link.click();
-        }
-
-        function restoreBackup(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    if (Array.isArray(data)) {
-                        devices = data;
-                        saveData();
-                        renderTable();
-                        alert("Phục hồi dữ liệu hệ thống thành công");
-                    } else {
-                        alert("Cấu trúc file không chính xác!");
-                    }
-                } catch (error) {
-                    alert("Lỗi đọc file phục hồi!");
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        function executePrintQR(deviceArray) {
-            let w = window.open("");
-            w.document.write(`
-                <html>
-                <head>
-                    <title>In Tem Mã QR Thiết Bị</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; margin: 20px; text-align: center; }
-                        .qr-card { 
-                            width: 200px; 
-                            display: inline-flex; 
-                            flex-direction: column; 
-                            align-items: center; 
-                            justify-content: center; 
-                            border: 1px dashed #666; 
-                            padding: 12px; 
-                            margin: 10px;
-                            box-sizing: border-box;
-                            background: #fff;
-                        }
-                        .qr-info { 
-                            margin-top: 8px; 
-                            font-size: 13px; 
-                            font-weight: bold; 
-                            color: #000;
-                            line-height: 1.4;
-                            text-align: left;
-                            width: 100%;
-                            word-break: break-all;
-                            border-top: 1px solid #ddd;
-                            padding-top: 6px;
-                        }
-                    </style>
-                </head>
-                <body>
-            `);
-
-            deviceArray.forEach(d => {
-                const qrData = `Mã thiết bị: ${d.maTB}\nTên thiết bị: ${d.tenTB}\nSố seri: ${d.seriTB}\nBộ phận sử dụng: ${d.khoaPhong}\nSố lượng: ${d.soLuong}\nTình trạng: ${d.tinhTrang}\nNgày sử dụng: ${d.ngaySuDung}`;
-                const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(qrData);
-                
-                w.document.write(`
-                    <div class="qr-card">
-                        <img src="${qrUrl}" width="165" height="165">
-                        <div class="qr-info">
-                            <div>Mã TB: ${d.maTB}</div>
-                            <div>Số Seri: ${d.seriTB}</div>
-                        </div>
-                    </div>
-                `);
-            });
-
-            w.document.write(`<script>window.onload=function(){ setTimeout(function(){ window.print(); window.close(); }, 500); }<\/script>`);
-            w.document.write("</body></html>");
-            w.document.close();
-        }
-
-        function printSingleQR(index) {
-            const selectedDevice = devices[index];
-            executePrintQR([selectedDevice]);
-        }
-
-        function printAllQR() {
-            if (devices.length === 0) {
-                alert("Danh sách trống, không có dữ liệu để in QR!");
-                return;
-            }
-            executePrintQR(devices);
-        }
-
-        async function printRepairPDF(index) {
-            const d = devices[index];
-            const repairs = d.repairHistory || [];
-            let w = window.open("");
-            w.document.write(`
-                <html>
-                <head>
-                    <title>In Phiếu Sửa Chữa - ${d.maTB}</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; margin: 30px; line-height: 1.6; }
-                        h2 { text-align: center; color: #2563eb; }
-                        .info-table, .repair-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                        .repair-table th, .repair-table td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-                        .repair-table th { background: #f2f2f2; }
-                    </style>
-                </head>
-                <body>
-                    <h2>PHIẾU THEO DÕI SỬA CHỮA THIẾT BỊ</h2>
-                    <p><strong>Mã thiết bị:</strong> ${d.maTB}</p>
-                    <p><strong>Tên thiết bị:</strong> ${d.tenTB}</p>
-                    <p><strong>Số seri:</strong> ${d.seriTB}</p>
-                    <p><strong>Khoa / Phòng:</strong> ${d.khoaPhong}</p>
-                    
-                    <h3>LỊCH SỬ SỬA CHỮA</h3>
-                    <table class="repair-table">
-                        <thead>
-                            <tr>
-                                <th>STT</th>
-                                <th>Ngày</th>
-                                <th>Nội dung</th>
-                                <th>SL</th>
-                                <th>Trạng thái</th>
-                                <th>Người YC</th>
-                                <th>Nơi sửa</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `);
-
-            if(repairs.length === 0) {
-                w.document.write(`<tr><td colspan="7">Chưa có lịch sử sửa chữa</td></tr>`);
-            } else {
-                repairs.forEach((r, i) => {
-                    w.document.write(`
-                        <tr>
-                            <td>${i + 1}</td>
-                            <td>${r.date || ""}</td>
-                            <td>${r.content || ""}</td>
-                            <td>${r.quantity || 1}</td>
-                            <td>${r.status || ""}</td>
-                            <td>${r.requester || ""}</td>
-                            <td>${r.place || ""}</td>
-                        </tr>
-                    `);
-                });
-            }
-
-            w.document.write(`</tbody></table>`);
-            w.document.write(`<script>window.onload=function(){ setTimeout(function(){ window.print(); window.close(); }, 300); }<\/script>`);
-            w.document.write("</body></html>");
-            w.document.close();
-        }
-
-        function viewAction(index) {
-            alert("Đã ghi nhận nhật ký hoạt động thiết bị.");
-        }
-
-        // CẢI TIẾN 2: Chuyển đổi thành lệnh gọi in trực tiếp hệ thống (Lưu PDF hoặc in giấy tùy chọn)
-        function printListDirectly() {
-            if (devices.length === 0) {
-                alert("Danh sách đang trống, không thể thực hiện lệnh in!");
-                return;
-            }
-            window.print();
+            XLSX.utils.book_append_sheet(wb, ws, "Danh sách thiết bị");
+            XLSX.writeFile(wb, "Danh_Sach_Thiet_Bi_Tin_Hoc.xlsx");
         }
 
         function downloadTemplateExcel() {
-            const headers = [["Mã thiết bị (*)", "Số seri (*)", "Tên thiết bị (*)", "Loại thiết bị", "Khoa / Phòng", "Người sử dụng", "Số lượng", "Tình trạng", "Ngày sử dụng (YYYY-MM-DD)", "Ngày kết thúc (YYYY-MM-DD)", "Ngày nhập (YYYY-MM-DD)", "Ghi chú"]];
-            const sampleData = [
-                ["MTB001", "SERI123456", "Máy tính Dell OptiPlex", "Máy tính", "Phòng Kế hoạch - Điều dưỡng", "Nguyễn Văn A", 1, "Đang sử dụng", "2026-05-19", "", "2026-05-19", "Phòng số 2"],
-                ["MIN002", "SERI789101", "Máy in Canon LBP2900", "Máy in", "Phòng Kế toán", "Trần Thị B", 1, "Đang sử dụng", "2026-02-10", "", "2026-02-10", ""]
-            ];
-            
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.aoa_to_sheet(headers.concat(sampleData));
-            XLSX.utils.book_append_sheet(wb, ws, "DanhSachThietBi");
-            XLSX.writeFile(wb, "Mau_Import_Thiet_Bi.xlsx");
-        }
+
+    const headers = [[
+
+        "Mã thiết bị",
+        "Số seri",
+        "Tên thiết bị",
+        "Loại thiết bị",
+
+        "Phân loại",
+        "Loại tài sản",
+
+        "Đơn giá",
+        "Thành tiền",
+
+        "Khoa / Phòng",
+        "Người sử dụng",
+
+        "Số lượng",
+        "Tình trạng",
+
+        "Ngày sử dụng (YYYY-MM-DD)",
+        "Ngày kết thúc (YYYY-MM-DD)",
+        "Ngày nhập (YYYY-MM-DD)",
+
+        "Ghi chú"
+
+    ]];
+
+    const sampleData = [[
+
+        "TB001",
+        "SERI123456",
+
+        "Máy tính Dell Optiplex",
+
+        "Thiết bị tin học",
+
+        "Tài sản",
+
+        "TSCĐ hữu hình",
+
+        15000000,
+
+        15000000,
+
+        "Khoa HSCC",
+
+        "Nguyễn Văn A",
+
+        1,
+
+        "Đang sử dụng",
+
+        "2026-01-15",
+
+        "2029-01-15",
+
+        "2026-01-10",
+
+        "Thiết bị cấp mới"
+
+    ]];
+
+    const wb = XLSX.utils.book_new();
+
+    const ws =
+        XLSX.utils.aoa_to_sheet(
+            headers.concat(sampleData)
+        );
+
+    ws['!cols'] = [
+
+        { wch: 18 },
+        { wch: 20 },
+        { wch: 35 },
+        { wch: 20 },
+
+        { wch: 18 },
+        { wch: 22 },
+
+        { wch: 15 },
+        { wch: 18 },
+
+        { wch: 30 },
+        { wch: 20 },
+
+        { wch: 10 },
+        { wch: 18 },
+
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 18 },
+
+        { wch: 30 }
+
+    ];
+
+    XLSX.utils.book_append_sheet(
+        wb,
+        ws,
+        "Template"
+    );
+
+    XLSX.writeFile(
+        wb,
+        "File_Mau_Thiet_Bi.xlsx"
+    );
+}
 
         function importExcel(event) {
             const file = event.target.files[0];
@@ -932,77 +1053,689 @@
 
             const reader = new FileReader();
             reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    const jsonRaw = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                    
-                    if (jsonRaw.length <= 1) {
-                        alert("File Excel trống hoặc sai định dạng tiêu đề mẫu!");
-                        return;
-                    }
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-                    let countImported = 0;
+                if (json.length <= 1) {
+                    alert("File Excel không có dữ liệu!");
+                    return;
+                }
 
-                    for (let i = 1; i < jsonRaw.length; i++) {
-                        const row = jsonRaw[i];
-                        if (!row || row.length === 0) continue;
+                let count = 0;
+                const logTime = new Date().toLocaleString("vi-VN");
 
-                        const maTB = row[0] ? row[0].toString().trim() : "";
-                        const seriTB = row[1] ? row[1].toString().trim() : "";
-                        const tenTB = row[2] ? row[2].toString().trim() : "";
+                for (let i = 1; i < json.length; i++) {
+                    const row = json[i];
+                    if (!row[0] || !row[1] || !row[2]) continue; // Bỏ qua nếu thiếu trường bắt buộc
 
-                        if (!maTB || !seriTB || !tenTB) continue;
+                    // Xử lý chuyển đổi ngày từ Excel (nếu người dùng nhập dạng date của Excel)
+                    const parseDate = (val) => {
+                        if (!val) return "";
+                        if (typeof val === 'number') {
+                            const dateObj = XLSX.utils.parse_date(val);
+                            return dateObj.toISOString().split('T')[0];
+                        }
+                        return val.toString().trim();
+                    };
 
-                        const device = {
-                            maTB: maTB,
-                            seriTB: seriTB,
-                            tenTB: tenTB,
-                            loaiTB: row[3] ? row[3].toString().trim() : "Khác",
-                            khoaPhong: row[4] ? row[4].toString().trim() : "Phòng Kế hoạch - Điều dưỡng",
-                            nguoiSuDung: row[5] ? row[5].toString().trim() : "",
-                            soLuong: row[6] && !isNaN(row[6]) ? parseInt(row[6]) : 1,
-                            tinhTrang: row[7] ? row[7].toString().trim() : "Đang sử dụng",
-                            ngaySuDung: row[8] ? formatExcelDate(row[8]) : "",
-                            ngayKetThuc: row[9] ? formatExcelDate(row[9]) : "",
-                            ngayNhap: row[10] ? formatExcelDate(row[10]) : "",
-                            ghiChu: row[11] ? row[11].toString().trim() : "",
-                            repairHistory: [],
-                            actionHistory: []
-                        };
+                    const newDevice = {
 
-                        devices.push(device);
-                        countImported++;
-                    }
+    maTB:
+        row[0]?.toString().trim() || "",
 
-                    if (countImported > 0) {
-                        saveData();
-                        renderTable();
-                        alert(`Hệ thống nạp thành công dữ liệu từ file Excel của ${countImported} thiết bị!`);
-                    } else {
-                        alert("Không tìm thấy hàng dữ liệu nào hợp lệ từ file Excel đã tải.");
-                    }
+    seriTB:
+        row[1]?.toString().trim() || "",
 
-                } catch (error) {
-                    console.error(error);
-                    alert("Đã xảy ra lỗi bất thường trong quá trình giải mã file Excel!");
+    tenTB:
+        row[2]?.toString().trim() || "",
+
+    loaiTB:
+        row[3]?.toString().trim() || "",
+
+    phanLoai:
+        row[4]?.toString().trim() || "Tài sản",
+
+    loaiTaiSan:
+        row[5]?.toString().trim() || "TSCĐ hữu hình",
+
+    donGia:
+        parseFloat(row[6]) || 0,
+
+    thanhTien:
+        parseFloat(row[7]) || 0,
+
+    khoaPhong:
+        row[8]?.toString().trim() || "",
+
+    nguoiSuDung:
+        row[9]?.toString().trim() || "",
+
+    soLuong:
+        parseInt(row[10]) || 1,
+
+    tinhTrang:
+        row[11]?.toString().trim() || "Đang sử dụng",
+
+    ngaySuDung:
+        parseDate(row[12]),
+
+    ngayKetThuc:
+        parseDate(row[13]),
+
+    ngayNhap:
+        parseDate(row[14]),
+
+    ghiChu:
+        row[15]?.toString().trim() || "",
+
+    repairHistory: [],
+
+    actionHistory: [
+        `[${logTime}] Nhập dữ liệu tự động từ Excel`
+    ]
+};
+
+                    devices.push(newDevice);
+                    count++;
+                }
+
+                if (count > 0) {
+                    saveData();
+                    alert(`Đã import thành công ${count} thiết bị từ Excel!`);
+                } else {
+                    alert("Không import được thiết bị nào. Kiểm tra lại định dạng file!");
                 }
                 document.getElementById('excelFile').value = "";
             };
             reader.readAsArrayBuffer(file);
         }
 
-        function formatExcelDate(excelDate) {
-            if (!excelDate) return "";
-            if (!isNaN(excelDate)) {
-                const date = new Date((excelDate - 25569) * 86400 * 1000);
-                return date.toISOString().split('T')[0];
-            }
-            return excelDate.toString().trim();
+        // --- 5. IN ẤN & SAO LƯU ---
+        function printListDirectly() {
+            window.print();
         }
+
+        function printSingleQR(index) {
+            const d = devices[index];
+            const qrData = `Mã thiết bị: ${d.maTB}\nTên thiết bị: ${d.tenTB}\nSố seri: ${d.seriTB}\nBộ phận sử dụng: ${d.khoaPhong}\nSố lượng: ${d.soLuong}\nTình trạng: ${d.tinhTrang}\nNgày sử dụng: ${formatDate(d.ngaySuDung)}\nNgày kết thúc: ${formatDate(d.ngayKetThuc)}`;
+            const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(qrData);
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>In mã QR - ${d.maTB}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+                        .qr-card { border: 2px dashed #333; padding: 15px; display: inline-block; border-radius: 10px; }
+                        h3 { margin: 5px 0; color: #2563eb; }
+                        p { margin: 3px 0; font-size: 13px; text-align: left; }
+                    </style>
+                </head>
+                <body onload="window.print(); window.close();">
+                    <div class="qr-card">
+                        <h3>MÃ QR THIẾT BỊ</h3>
+                        <img src="${qrUrl}" style="width:160px; height:160px; margin: 10px 0;">
+                        <p><b>Mã TB:</b> ${d.maTB}</p>
+                        <p><b>Tên:</b> ${d.tenTB}</p>
+                        <p><b>Khoa:</b> ${d.khoaPhong}</p>
+                    </div>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+
+        function printAllQR() {
+
+    if (devices.length === 0) {
+        alert("Không có danh sách thiết bị để in QR!");
+        return;
+    }
+
+    const printWindow = window.open('', '_blank');
+
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>In tất cả mã QR</title>
+
+            <style>
+
+   @page { size: A4 landscape; margin: 8mm; }
+    /* Điều chỉnh cho thẻ cha bao ngoài các nhãn */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    display: flex;       /* Chuyển sang flex để kiểm soát tốt hơn */
+    flex-wrap: wrap;     /* Cho phép các nhãn tự xuống dòng khi hết hàng */
+    gap: 20px;           /* Khoảng cách giữa các nhãn */
+}
+
+/* Điều chỉnh cho từng nhãn QR */
+.qr-card {
+    width: 230px; 
+    height: fit-content; /* QUAN TRỌNG: Khung chỉ cao bằng nội dung bên trong */
+    min-height: 0;       /* Loại bỏ chiều cao tối thiểu */
+    border: 2px dashed #333; 
+    border-radius: 10px;
+    padding: 15px; 
+    box-sizing: border-box;
+    
+    display: flex; 
+    flex-direction: column; 
+    align-items: center;
+    
+    page-break-inside: avoid; /* Tránh bị cắt nhãn khi in */
+}
+
+    .qr-title { font-size: 15px; font-weight: bold; margin-bottom: 5px; color: #374151; }
+    .scan-text { font-size: 10px; text-align: center; margin-bottom: 5px; color: #555; }
+    .qr-card img { width: 85px; height: 85px; margin-bottom: 5px; }
+
+    .info-line {
+        display: flex; align-items: flex-start;
+        width: 100%; font-size: 11px; line-height: 14px; margin-top: 3px;
+    }
+
+    .label {
+        width: 50px; /* Độ rộng cố định cho nhãn (Mã TB, Tên TB...) */
+        font-weight: bold; flex-shrink: 0;
+    }
+
+    .value {
+        flex: 1; /* Phần này sẽ tự động dãn ra */
+        text-align: left;
+        word-wrap: break-word; /* Tự động xuống dòng nếu tên quá dài */
+        overflow-wrap: break-word;
+    }
+
+            </style>
+			
+
+        </head>
+
+        <body onload="window.print(); window.close();">
+    `);
+
+    devices.forEach(d => {
+
+       const qrData = `Mã thiết bị: ${d.maTB}
+Tên thiết bị: ${d.tenTB}
+Số seri: ${d.seriTB}
+Bộ phận sử dụng: ${d.khoaPhong}
+Tình trạng: ${d.tinhTrang}
+Ngày sử dụng: ${formatDate(d.ngaySuDung)}
+Ngày kết thúc: ${formatDate(d.ngayKetThuc)}`;
+
+        const qrUrl =
+            "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data="
+            + encodeURIComponent(qrData);
+
+      printWindow.document.write(`
+
+<div class="qr-card">
+
+    <div class="qr-title">
+        MÃ QR THIẾT BỊ
+    </div>
+
+    <img src="${qrUrl}">
+
+    <div class="scan-text">
+        Quét mã QR để xem thông tin
+    </div>
+
+    <div class="info-line">
+    <div class="label">Mã TB:</div>
+    <div class="value">${d.maTB}</div>
+</div>
+
+<div class="info-line">
+    <div class="label">Tên TB:</div>
+    <div class="value">${d.tenTB}</div>
+</div>
+
+<div class="info-line">
+    <div class="label">Khoa/P:</div>
+    <div class="value">${d.khoaPhong}</div>
+</div>
+
+</div>
+
+`);
+
+    });
+
+    printWindow.document.write(`
+        </body>
+        </html>
+    `);
+
+    printWindow.document.close();
+}
+
+        function printRepairPDF(index) {
+            const d = devices[index];
+            const repairs = d.repairHistory || [];
+            if (repairs.length === 0) {
+                alert("Thiết bị này chưa có lịch sử sửa chữa để xuất file in PDF!");
+                return;
+            }
+
+            const printWindow = window.open('', '_blank');
+            let rowsHtml = '';
+            repairs.forEach((r, idx) => {
+                rowsHtml += `
+                    <tr>
+                        <td style="border:1px solid #000; padding:6px; text-align:center;">${idx + 1}</td>
+                        <td style="border:1px solid #000; padding:6px; text-align:center;">${formatDate(r.date)}</td>
+                        <td style="border:1px solid #000; padding:6px;">${r.content}</td>
+                        <td style="border:1px solid #000; padding:6px; text-align:center;">${r.quantity}</td>
+                        <td style="border:1px solid #000; padding:6px; text-align:center;">${r.status}</td>
+                        <td style="border:1px solid #000; padding:6px;">${r.requester}</td>
+                        <td style="border:1px solid #000; padding:6px;">${r.place}</td>
+                        <td style="border:1px solid #000; padding:6px;">${r.note || ""}</td>
+                    </tr>
+                `;
+            });
+
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Lịch sử sửa chữa - ${d.maTB}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 20px; line-height:1.5; }
+                        h2 { text-align: center; color: #000; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+                    </style>
+                </head>
+                <body onload="window.print(); window.close();">
+                    <h2>LỊCH SỬ SỬA CHỮA, BẢO TRÌ THIẾT BỊ</h2>
+                    <p><b>Mã thiết bị:</b> ${d.maTB} &nbsp;&nbsp;&nbsp;&nbsp; <b>Tên thiết bị:</b> ${d.tenTB}</p>
+                    <p><b>Số seri:</b> ${d.seriTB} &nbsp;&nbsp;&nbsp;&nbsp; <b>Khoa/Phòng bộ phận:</b> ${d.khoaPhong}</p>
+                    <p><b>Ngày đưa vào SD:</b> ${formatDate(d.ngaySuDung)} &nbsp;&nbsp;&nbsp;&nbsp; <b>Hạn dùng (Ngày KT):</b> ${formatDate(d.ngayKetThuc)}</p>
+                    <table>
+                        <thead>
+                            <tr style="background:#e2e8f0;">
+                                <th style="border:1px solid #000; padding:6px;">STT</th>
+                                <th style="border:1px solid #000; padding:6px;">Ngày</th>
+                                <th style="border:1px solid #000; padding:6px;">Nội dung sửa chữa</th>
+                                <th style="border:1px solid #000; padding:6px;">SL</th>
+                                <th style="border:1px solid #000; padding:6px;">Trạng thái</th>
+                                <th style="border:1px solid #000; padding:6px;">Người YC</th>
+                                <th style="border:1px solid #000; padding:6px;">Nơi sửa</th>
+                                <th style="border:1px solid #000; padding:6px;">Ghi chú</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHtml}</tbody>
+                    </table>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+
+        function backupData() {
+            if (devices.length === 0) {
+                alert("Hệ thống trống, không có dữ liệu để backup!");
+                return;
+            }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(devices, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `Backup_Devices_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function restoreBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedDevices = JSON.parse(e.target.result);
+                    if (Array.isArray(importedDevices)) {
+                        if (confirm(`Bạn có chắc chắn muốn ghi đè hệ thống bằng tệp JSON chứa [${importedDevices.length}] thiết bị này không?`)) {
+                            devices = importedDevices;
+                            saveData();
+                            alert("Phục hồi dữ liệu sao lưu thành công lên ĐÁM MÂY!");
+                        }
+                    } else {
+                        alert("Cấu trúc file JSON không hợp lệ để khôi phục!");
+                    }
+                } catch (err) {
+                    alert("Lỗi đọc file JSON: " + err.message);
+                }
+                document.getElementById('restoreFile').value = "";
+            };
+            reader.readAsText(file);
+        }
+		// =======================
+// =======================
+// QR SCANNER PRO
+// =======================
+
+let html5QrCode;
+let scanning = false;
+let currentCameraId = null;
+
+// Âm thanh
+const successSound = new Audio(
+    "https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"
+);
+
+// MỞ CAMERA
+function openQRScanner() {
+
+    document.getElementById("qrScannerModal").style.display = "block";
+
+    if (scanning) return;
+
+    html5QrCode = new Html5Qrcode("reader");
+
+    scanning = true;
+
+    Html5Qrcode.getCameras().then(devices => {
+
+        if (!devices.length) {
+
+            alert("Không tìm thấy camera");
+            return;
+        }
+
+        // ưu tiên camera sau
+        let backCamera = devices.find(device =>
+
+            device.label.toLowerCase().includes("back") ||
+            device.label.toLowerCase().includes("rear") ||
+            device.label.toLowerCase().includes("environment")
+
+        );
+
+        currentCameraId = backCamera
+            ? backCamera.id
+            : devices[0].id;
+
+        html5QrCode.start(
+
+            currentCameraId,
+
+            {
+                fps: 10,
+
+                qrbox: {
+                    width: 280,
+                    height: 280
+                },
+
+                aspectRatio: 1.777,
+
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.QR_CODE,
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.EAN_13
+                ]
+            },
+
+            // SCAN SUCCESS
+            function(decodedText) {
+
+                successSound.play();
+
+                if (navigator.vibrate) {
+                    navigator.vibrate(200);
+                }
+
+                showQRResult(decodedText);
+
+                findAndHighlightDevice(decodedText);
+
+            },
+
+            function(error) {
+            }
+
+        );
+
+    }).catch(err => {
+
+        alert("Lỗi camera: " + err);
+
+    });
+}
+
+// ĐÓNG CAMERA
+function closeQRScanner() {
+
+    document.getElementById("qrScannerModal").style.display = "none";
+
+    scanning = false;
+
+    if (html5QrCode) {
+
+        html5QrCode.stop()
+        .then(() => {
+
+            html5QrCode.clear();
+
+        })
+        .catch(err => console.log(err));
+    }
+}
+
+// FLASH
+async function toggleFlash() {
+
+    try {
+
+        const track = html5QrCode.getRunningTrack();
+
+        const capabilities = track.getCapabilities();
+
+        if (!capabilities.torch) {
+
+            alert("Thiết bị không hỗ trợ flash");
+            return;
+        }
+
+        const settings = track.getSettings();
+
+        await track.applyConstraints({
+            advanced: [{
+                torch: !settings.torch
+            }]
+        });
+
+    } catch (err) {
+
+        alert("Không bật được flash");
+    }
+}
+
+// HIỆN KẾT QUẢ
+function showQRResult(text) {
+
+    let html = `
+        <div style="
+            text-align:left;
+            line-height:1.8;
+        ">
+
+            <h3 style="
+                font-size:22px;
+                color:#2563eb;
+                margin-bottom:15px;
+                text-align:center;
+            ">
+                THÔNG TIN THIẾT BỊ
+            </h3>
+    `;
+
+    const lines = text.split('\n');
+
+    lines.forEach(line => {
+
+        html += `
+            <div style="
+                padding:10px;
+                margin-bottom:8px;
+                background:#f8fafc;
+                border-radius:8px;
+                border-left:4px solid #2563eb;
+            ">
+                ${line}
+            </div>
+        `;
+    });
+
+    html += `</div>`;
+
+    document.getElementById("viewModalContent").innerHTML = html;
+
+    document.getElementById("viewModal").style.display = "block";
+
+    // ĐỌC GIỌNG NÓI
+    speakDeviceInfo(lines);
+}
+
+// GIỌNG NÓI
+function speakDeviceInfo(lines) {
+
+    try {
+
+        const text = lines.join(". ");
+
+        const speech = new SpeechSynthesisUtterance(text);
+
+        speech.lang = "vi-VN";
+
+        speech.rate = 1;
+
+        window.speechSynthesis.speak(speech);
+
+    } catch (e) {
+        console.log(e);
+    }
+}
+
+// TÌM THIẾT BỊ
+function findAndHighlightDevice(text) {
+
+    let foundIndex = -1;
+
+    devices.forEach((d, i) => {
+
+        if (
+            text.includes(d.maTB) ||
+            text.includes(d.seriTB)
+        ) {
+            foundIndex = i;
+        }
+
+    });
+
+    if (foundIndex === -1) return;
+
+    // render lại bảng
+    renderTable();
+
+    setTimeout(() => {
+
+        const rows =
+            document.querySelectorAll("#tableBody tr");
+
+        if (rows[foundIndex]) {
+
+            rows[foundIndex].style.background =
+                "#fef08a";
+
+            rows[foundIndex].style.transition =
+                "all 0.3s ease";
+
+            rows[foundIndex].scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+
+        }
+
+    }, 300);
+}
+
     </script>
+	<!-- MODAL QUÉT QR -->
+<div id="qrScannerModal" class="modal">
+
+    <div class="card" style="
+        max-width:700px;
+        margin:auto;
+        text-align:center;
+        background:white;
+    ">
+
+        <div style="
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:15px;
+        ">
+
+            <h2 style="
+                font-size:26px;
+                font-weight:bold;
+                color:#0ea5e9;
+            ">
+                QUÉT MÃ QR / BARCODE
+            </h2>
+
+            <button onclick="closeQRScanner()"
+                class="btn"
+                style="background:red;">
+                Đóng
+            </button>
+        </div>
+
+        <div id="reader" style="
+            width:100%;
+            border-radius:15px;
+            overflow:hidden;
+        "></div>
+
+        <div style="
+            display:flex;
+            gap:10px;
+            justify-content:center;
+            flex-wrap:wrap;
+            margin-top:15px;
+        ">
+
+            <button onclick="toggleFlash()"
+                class="btn"
+                style="background:#f59e0b;">
+                Bật/Tắt Flash
+            </button>
+
+        </div>
+
+        <p style="
+            margin-top:12px;
+            color:#64748b;
+            font-size:14px;
+        ">
+            Đưa mã QR hoặc Barcode vào camera để xem thông tin
+        </p>
+
+    </div>
+
+</div>
 </body>
 
 </html>
